@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DogsModule } from './dogs/dogs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { HealthModule } from './health/health.module';
 import configuration from './config/configuration';
 import * as Joi from 'joi';
 
@@ -15,6 +16,7 @@ import * as Joi from 'joi';
         DATABASE_URL: Joi.string().required(),
       }),
     }),
+    HealthModule,
   ],
   controllers: [],
   providers: [],
