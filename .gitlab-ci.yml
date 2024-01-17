@@ -1,0 +1,111 @@
+# Define stages for your pipeline.
+stages:
+  - init
+  - security_tests&push
+
+cache:
+  - key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+    policy: pull
+
+variables:
+  IMAGE_REGISTRY: "gitlab.polytech.umontpellier.fr:5050/mmoreiradj/ci-cd-advanced"
+  POSTGRES_USER: dog-api
+  POSTGRES_PASSWORD: dog-api
+  POSTGRES_DB: dog-api
+
+# Init stage
+init:
+  stage: init
+  image: node:latest
+  before_script:
+    - npm install -g pnpm
+    - pnpm install
+  script:
+    # Format stage
+    - echo "Formatting code application ..."
+    - pnpm run format:check
+
+    # Lint stage
+    - echo "Linting code application ..."
+    - pnpm run lint:check
+
+    # Build-test stage
+    - echo "Building code"
+    - pnpm build
+
+# Tests stage
+tests:
+  stage: init
+  image: node:latest
+  services:
+    - name: postgres:16-alpine
+      alias: postgres-test
+  before_script:
+    # Init node environnement
+    - npm install -g pnpm
+    - pnpm install
+
+  script:
+    # Unit tests stage
+    - echo "Launching unit tests ..."
+    - pnpm run test
+
+    # Integration tests stage
+    - echo "Launching integration tests ..."
+    - pnpm run test:jest
+
+container_scan:
+  stage: security_tests&push
+  image: docker:stable
+  services:
+    - name: docker:dind
+      entrypoint: ["env", "-u", "DOCKER_HOST"]
+      command: ["dockerd-entrypoint.sh"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+    # See https://github.com/docker-library/docker/pull/166
+    DOCKER_TLS_CERTDIR: ""
+    IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  before_script:
+    - export TRIVY_VERSION=$(wget -qO - "https://api.github.com/repos/aquasecurity/trivy/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+    - echo $TRIVY_VERSION
+    - wget --no-verbose https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz -O - | tar -zxvf -
+    - apk add --update curl && rm -rf /var/cache/apk/*
+  allow_failure: true
+  script:
+    # Retrieve access_token
+    - export GITLAB_API_TOKEN=$GITLAB_TOKEN
+
+    # Wait for the service to be healthy. See https://gitlab.com/gitlab-org/gitlab/-/issues/24197
+    - sleep 10
+
+    # Build image
+    - docker build -t $IMAGE .
+
+    # Build report
+    - ./trivy image --exit-code 0 --cache-dir .trivycache/ --no-progress --format template --template "@contrib/html.tpl" -o gl-container-scanning-report.html $IMAGE
+    # Print report
+    - ./trivy image --exit-code 0 --cache-dir .trivycache/ --no-progress --severity HIGH $IMAGE
+    # Fail on severe vulnerabilities
+    - ./trivy image --exit-code 1 --cache-dir .trivycache/ --severity CRITICAL --no-progress $IMAGE
+
+    # Send note de merge request
+    - 'curl -v --header "PRIVATE-TOKEN:$GITLAB_API_TOKEN" --data-urlencode body@./gl-container-scanning-report.html "https://gitlab.polytech.umontpellier.fr/api/v4/projects/$CI_MERGE_REQUEST_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes"'
+
+    # Login to container registry
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    # Push image to registry
+    - docker push $IMAGE
+  cache:
+    paths:
+      - .trivycache/
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.html
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'

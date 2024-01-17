@@ -22,10 +22,11 @@ FROM node:20.9.0-alpine3.18 as production
 
 WORKDIR /app
 
-RUN apk update && \
-    apk upgrade libcrypto3 && \
-    apk upgrade libssl3 && \
-    rm -rf /var/cache/apk/*
+ # Commented to show vulnerabilities !
+# RUN apk update && \
+#     apk upgrade libcrypto3 && \
+#     apk upgrade libssl3 && \
+#     rm -rf /var/cache/apk/*
 
 COPY --from=build --chown=node:node /build/node_modules ./node_modules
 COPY --from=build --chown=node:node /build/dist ./dist
