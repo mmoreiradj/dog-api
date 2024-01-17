@@ -32,4 +32,4 @@ COPY --from=build --chown=node:node /build/dist ./dist
 
 USER node
 
-CMD ["dist/main"]
+CMD ["node", "dist/main.js"]
