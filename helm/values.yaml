@@ -1,0 +1,76 @@
+# Default values for helm.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: gitlab.polytech.umontpellier.fr:5050/mmoreiradj/ci-cd-advanced
+  pullPolicy: IfNotPresent
+  tag: "0.0.0"
+
+imagePullSecrets:
+  - name: regcred
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  annotation: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    traefik.ingress.kubernetes.io/redirect-entry-point: https
+    traefik.ingress.kubernetes.io/redirect-permanent: "true"
+  hosts:
+    - host: api.dog.do.moreiradj.net
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: api.dog.do.moreiradj.net-tls
+      hosts:
+        - api.dog.do.moreiradj.net
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 500Mi
+  requests:
+    cpu: 500m
+    memory: 500Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+postgresql:
+  auth:
+    username: dog-api
+    password: dog-api
+    database: dog-api
+
+env:
+  databaseUrl: postgresql://dog-api:dog-api@dogapi-postgresql/dog-api?schema=public
