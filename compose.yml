@@ -10,5 +10,19 @@ services:
     volumes:
       - postgres:/var/lib/postgresql/data
 
+  test-database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dog-api
+      POSTGRES_PASSWORD: dog-api
+      POSTGRES_DB: dog-api
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: pg_isready -U dog-api -d dog-api
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres:
