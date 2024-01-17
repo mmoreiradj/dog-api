@@ -1,8 +1,13 @@
-# CI-CD Advanced project
+# GItlab CI Demo
+
+Note: This project is originally hosted on a private Gitlab, it's on github for the sake of sharing it.
 
 ## Description
 
-The goal of the CI-CD advanced project is to make create a CI-CD of the dog-api and make use of trivy, a container scanner to look for vulnerabilities.
+The goal is to make create a CI pipeline for a NestJS api. It checks the code quality, if it builds and runs tests with jest. It also makes use of trivy, a container scanning tool to look for vulnerabilities.
+
+It also uses [husky](https://www.npmjs.com/package/husky) to run the tests and linting before each commit.
+
 We decided to setup our gitlab-runner in a kubernetes hosted on a Virtual machine.
 
 Note : We commented parts of the *Dockerfile* to explicitly introduce vulnerabilities.
