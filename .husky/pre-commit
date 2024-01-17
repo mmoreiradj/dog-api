@@ -5,6 +5,8 @@ pnpm run lint:check
 
 pnpm run format:check
 
+pnpm run build
+
 pnpm run test
 
 pnpm run test:e2e
